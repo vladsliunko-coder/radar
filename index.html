@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>BRIGADIR RADAR</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; background: #0b0d17; overflow: hidden; font-family: 'Arial', sans-serif; }
+        #map { height: 100vh; width: 100vw; background: #0b0d17; }
+        
+        /* Стиль панели BRIGADIR */
+        .top-panel {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(10, 15, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 35px; border-radius: 40px;
+            color: white; display: flex; gap: 30px; align-items: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .brand { font-size: 24px; font-weight: 900; letter-spacing: 6px; color: #fff; }
+        
+        /* Стиль иконок и надписей */
+        .shahed-icon { filter: drop-shadow(0 0 10px #fff); }
+        .city-label {
+            color: #fff; font-weight: bold; font-size: 11px; text-transform: uppercase;
+            background: rgba(10, 15, 30, 0.95) !important;
+            border: 1px solid #fff !important;
+            padding: 2px 8px !important; border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-panel">
+        <div class="brand">BRIGADIR</div>
+        <div style="color: #ff4d4d; font-weight: bold; font-size: 14px;">● ТРИВОГА</div>
+        <div style="font-size: 18px; font-weight: bold;">ЦІЛІ: <span id="target-count" style="color: #ffcc00;">0</span></div>
+    </div>
+    <div id="map"></div>
+    <script>
+        // Создаем карту. Сразу ставим координаты центра Украины.
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.37, 31.16], 6);
+
+        // СТАБИЛЬНЫЙ ТЕМНЫЙ СЛОЙ (CartoDB Dark Matter)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        var markers = [];
+
+        var shahedIcon = L.divIcon({
+            html: `<svg width="40" height="40" viewBox="0 0 24 24" fill="white" class="shahed-icon">
+                    <path d="M21,16L22,19H19L14.5,15.5L9,15.5L4.5,19H1.5L2.5,16L1,11L4,11L7,12L12,2L17,12L20,11L23,11L21,16Z" />
+                   </svg>`,
+            className: "", iconSize: [40, 40], iconAnchor: [20, 20]
+        });
+
+        async function update() {
+            try {
+                // Подтягиваем данные из map_data.json
+                const res = await fetch('/map_data.json?t=' + Date.now());
+                const data = await res.json();
+                
+                // Чистим старые метки
+                markers.forEach(m => map.removeLayer(m));
+                markers = [];
+                
+                document.getElementById('target-count').innerText = data.length;
+
+                data.forEach(t => {
+                    var m = L.marker([t.lat, t.lon], {icon: shahedIcon}).addTo(map)
+                        .bindTooltip(t.city, {permanent: true, direction: 'bottom', offset: [0, 15], className: 'city-label'});
+                    markers.push(m);
+                });
+            } catch (e) { console.log("Waiting for radar data..."); }
+        }
+
+        // Обновляем раз в 2 секунды
+        setInterval(update, 2000);
+        update();
+    </script>
+</body>
+</html>
